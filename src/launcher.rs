@@ -38,6 +38,11 @@ impl std::fmt::Display for LaunchError {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn shell_command(command: &str) -> String {
+    format!("{command}\nexec bash -i")
+}
+
 pub fn launch(cfg: &AppConfig) -> Result<(), LaunchError> {
     #[cfg(not(target_os = "windows"))]
     {
@@ -137,12 +142,13 @@ fn launch_panes_on_workarea(
             .map(|p| p.name.as_str());
 
         if !pane.command.trim().is_empty() {
+            let command = shell_command(&pane.command);
             if let Some(pn) = profile_name {
-                cmd.args(["-p", pn, "wsl.exe", "--", "bash", "-lc", &pane.command]);
+                cmd.args(["-p", pn, "wsl.exe", "--", "bash", "-lic", &command]);
             } else if profile_key.is_empty() {
-                cmd.args(["wsl.exe", "--", "bash", "-lc", &pane.command]);
+                cmd.args(["wsl.exe", "--", "bash", "-lic", &command]);
             } else {
-                cmd.args(["wsl.exe", "-d", profile_key, "--", "bash", "-lc", &pane.command]);
+                cmd.args(["wsl.exe", "-d", profile_key, "--", "bash", "-lic", &command]);
             }
         } else if let Some(pn) = profile_name {
             cmd.args(["-p", pn]);

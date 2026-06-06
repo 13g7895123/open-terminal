@@ -23,6 +23,8 @@ const STATUS_OK: Color32 = Color32::from_rgb(34, 197, 94);
 
 const PAD_H: f32 = 14.0; // inner_margin vertical
 const PAD_W: f32 = 20.0; // inner_margin horizontal
+const CARD_MIN_H: f32 = 176.0;
+const CARD_INNER_H: f32 = 152.0;
                          // ────────────────────────────────────────────────────────────────────────────
 
 pub struct App {
@@ -323,11 +325,12 @@ impl App {
                         break;
                     }
                     ui.allocate_ui_with_layout(
-                        Vec2::new(card_w, 0.0),
+                        Vec2::new(card_w, CARD_MIN_H),
                         Layout::top_down(Align::Min),
                         |ui| {
                             ui.set_min_width(card_w);
                             ui.set_max_width(card_w);
+                            ui.set_min_height(CARD_MIN_H);
                             self.draw_card(ui, i, pane_labels[i], is_second);
                         },
                     );
@@ -368,132 +371,141 @@ impl App {
         // combobox id 需區分兩組，避免 egui id 衝突
         let combo_id = if is_second { format!("distro2_{i}") } else { format!("distro_{i}") };
 
-        Frame::none()
-            .fill(if enabled { CARD } else { CARD_DISABLED })
-            .rounding(Rounding::same(10.0))
-            .stroke(Stroke::new(
-                1.0,
-                if enabled { BORDER } else { Color32::from_rgb(38, 48, 64) },
-            ))
-            .inner_margin(Margin::same(12.0))
-            .show(ui, |ui| {
-                let field_label_w = 42.0;
+        ui.allocate_ui_with_layout(
+            Vec2::new(ui.available_width(), CARD_MIN_H),
+            Layout::top_down(Align::Min),
+            |ui| {
+                Frame::none()
+                    .fill(if enabled { CARD } else { CARD_DISABLED })
+                    .rounding(Rounding::same(10.0))
+                    .stroke(Stroke::new(
+                        1.0,
+                        if enabled { BORDER } else { Color32::from_rgb(38, 48, 64) },
+                    ))
+                    .inner_margin(Margin::same(12.0))
+                    .show(ui, |ui| {
+                        ui.set_min_height(CARD_INNER_H);
+                        ui.set_max_height(CARD_INNER_H);
+                        let field_label_w = 42.0;
 
-                ui.horizontal(|ui| {
-                    ui.label(
-                        RichText::new(pane_label)
-                            .font(FontId::proportional(11.0))
-                            .color(if enabled { ACCENT } else { TEXT_DIM }),
-                    );
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.label(
-                            RichText::new("啟用")
-                                .font(FontId::proportional(10.5))
-                                .color(TEXT_DIM),
-                        );
-                        let pane_mut = if is_second { &mut self.config.panes2[i] } else { &mut self.config.panes[i] };
-                        ui.checkbox(&mut pane_mut.enabled, "");
-                    });
-                });
-
-                ui.add_space(6.0);
-
-                ui.horizontal(|ui| {
-                    ui.add_sized(
-                        [field_label_w, 14.0],
-                        egui::Label::new(
-                            RichText::new("名稱")
-                                .font(FontId::proportional(11.0))
-                                .color(if enabled { TEXT_MUTED } else { TEXT_DIM }),
-                        ),
-                    );
-                    let input_w = (ui.available_width() - 4.0).max(120.0);
-                    let mut val = label_val;
-                    if ui
-                        .add(
-                            egui::TextEdit::singleline(&mut val)
-                                .hint_text("Terminal 名稱")
-                                .font(FontId::proportional(12.0))
-                                .desired_width(input_w)
-                                .interactive(enabled)
-                                .margin(Margin::symmetric(6.0, 4.0)),
-                        )
-                        .changed()
-                    {
-                        let pane_mut = if is_second { &mut self.config.panes2[i] } else { &mut self.config.panes[i] };
-                        pane_mut.label = val;
-                    }
-                });
-
-                ui.add_space(5.0);
-
-                ui.horizontal(|ui| {
-                    ui.add_sized(
-                        [field_label_w, 14.0],
-                        egui::Label::new(
-                            RichText::new("Profile")
-                                .font(FontId::proportional(11.0))
-                                .color(if enabled { TEXT_MUTED } else { TEXT_DIM }),
-                        ),
-                    );
-                    let input_w = (ui.available_width() - 4.0).max(120.0);
-                    if enabled {
-                        let pane_mut = if is_second { &mut self.config.panes2[i] } else { &mut self.config.panes[i] };
-                        egui::ComboBox::from_id_source(&combo_id)
-                            .selected_text(RichText::new(&profile_display).font(FontId::proportional(12.0)))
-                            .width(input_w)
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(
-                                    &mut pane_mut.profile,
-                                    String::new(),
-                                    RichText::new("預設").font(FontId::proportional(12.0)),
+                        ui.horizontal(|ui| {
+                            ui.label(
+                                RichText::new(pane_label)
+                                    .font(FontId::proportional(11.0))
+                                    .color(if enabled { ACCENT } else { TEXT_DIM }),
+                            );
+                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                ui.label(
+                                    RichText::new("啟用")
+                                        .font(FontId::proportional(10.5))
+                                        .color(TEXT_DIM),
                                 );
-                                for (guid, label) in &profile_options {
-                                    ui.selectable_value(
-                                        &mut pane_mut.profile,
-                                        guid.clone(),
-                                        RichText::new(label).font(FontId::proportional(12.0)),
-                                    );
-                                }
+                                let pane_mut = if is_second { &mut self.config.panes2[i] } else { &mut self.config.panes[i] };
+                                ui.checkbox(&mut pane_mut.enabled, "");
                             });
-                    } else {
-                        ui.label(
-                            RichText::new(&profile_display)
-                                .font(FontId::proportional(12.0))
-                                .color(TEXT_DIM),
-                        );
-                    }
-                });
+                        });
 
-                ui.add_space(5.0);
+                        ui.add_space(6.0);
 
-                ui.horizontal(|ui| {
-                    ui.add_sized(
-                        [field_label_w, 14.0],
-                        egui::Label::new(
-                            RichText::new("指令")
-                                .font(FontId::proportional(11.0))
-                                .color(if enabled { TEXT_MUTED } else { TEXT_DIM }),
-                        ),
-                    );
-                    let input_w = (ui.available_width() - 4.0).max(120.0);
-                    let mut val = command_val;
-                    if ui
-                        .add(
-                            egui::TextEdit::singleline(&mut val)
-                                .hint_text("留空直接開啟 WSL")
-                                .font(FontId::monospace(11.5))
-                                .desired_width(input_w)
-                                .interactive(enabled)
-                                .margin(Margin::symmetric(6.0, 4.0)),
-                        )
-                        .changed()
-                    {
-                        let pane_mut = if is_second { &mut self.config.panes2[i] } else { &mut self.config.panes[i] };
-                        pane_mut.command = val;
-                    }
-                });
-            });
+                        ui.horizontal(|ui| {
+                            ui.add_sized(
+                                [field_label_w, 14.0],
+                                egui::Label::new(
+                                    RichText::new("名稱")
+                                        .font(FontId::proportional(11.0))
+                                        .color(if enabled { TEXT_MUTED } else { TEXT_DIM }),
+                                ),
+                            );
+                            let input_w = (ui.available_width() - 4.0).max(120.0);
+                            let mut val = label_val;
+                            if ui
+                                .add(
+                                    egui::TextEdit::singleline(&mut val)
+                                        .hint_text("Terminal 名稱")
+                                        .font(FontId::proportional(12.0))
+                                        .desired_width(input_w)
+                                        .interactive(enabled)
+                                        .margin(Margin::symmetric(6.0, 4.0)),
+                                )
+                                .changed()
+                            {
+                                let pane_mut = if is_second { &mut self.config.panes2[i] } else { &mut self.config.panes[i] };
+                                pane_mut.label = val;
+                            }
+                        });
+
+                        ui.add_space(5.0);
+
+                        ui.horizontal(|ui| {
+                            ui.add_sized(
+                                [field_label_w, 14.0],
+                                egui::Label::new(
+                                    RichText::new("Profile")
+                                        .font(FontId::proportional(11.0))
+                                        .color(if enabled { TEXT_MUTED } else { TEXT_DIM }),
+                                ),
+                            );
+                            let input_w = (ui.available_width() - 4.0).max(120.0);
+                            if enabled {
+                                let pane_mut = if is_second { &mut self.config.panes2[i] } else { &mut self.config.panes[i] };
+                                egui::ComboBox::from_id_source(&combo_id)
+                                    .selected_text(RichText::new(&profile_display).font(FontId::proportional(12.0)))
+                                    .width(input_w)
+                                    .show_ui(ui, |ui| {
+                                        ui.selectable_value(
+                                            &mut pane_mut.profile,
+                                            String::new(),
+                                            RichText::new("預設").font(FontId::proportional(12.0)),
+                                        );
+                                        for (guid, label) in &profile_options {
+                                            ui.selectable_value(
+                                                &mut pane_mut.profile,
+                                                guid.clone(),
+                                                RichText::new(label).font(FontId::proportional(12.0)),
+                                            );
+                                        }
+                                    });
+                            } else {
+                                ui.label(
+                                    RichText::new(&profile_display)
+                                        .font(FontId::proportional(12.0))
+                                        .color(TEXT_DIM),
+                                );
+                            }
+                        });
+
+                        ui.add_space(5.0);
+
+                        ui.horizontal(|ui| {
+                            ui.add_sized(
+                                [field_label_w, 14.0],
+                                egui::Label::new(
+                                    RichText::new("指令")
+                                        .font(FontId::proportional(11.0))
+                                        .color(if enabled { TEXT_MUTED } else { TEXT_DIM }),
+                                ),
+                            );
+                            let input_w = (ui.available_width() - 4.0).max(120.0);
+                            let mut val = command_val;
+                            if ui
+                                .add(
+                                    egui::TextEdit::singleline(&mut val)
+                                        .hint_text("用 && 串接，例如: cd ~/project && codex --yolo")
+                                        .font(FontId::monospace(11.5))
+                                        .desired_width(input_w)
+                                        .interactive(enabled)
+                                        .margin(Margin::symmetric(6.0, 4.0)),
+                                )
+                                .on_hover_text("這裡的內容會交給該 terminal profile 對應的 WSL 環境，以互動 login shell 執行。請用 &&、;、|| 串接指令，不要用 | 來做換目錄。命令結束後會停留在同一個 shell。")
+                                .changed()
+                            {
+                                let pane_mut = if is_second { &mut self.config.panes2[i] } else { &mut self.config.panes[i] };
+                                pane_mut.command = val;
+                            }
+                        });
+                    });
+            },
+        );
     }
 
     fn draw_footer(&mut self, ui: &mut egui::Ui) {
