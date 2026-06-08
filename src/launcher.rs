@@ -12,6 +12,7 @@ use std::time::Duration;
 use windows::{
     Win32::Foundation::{BOOL, HWND, LPARAM, RECT},
     Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS},
+    Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID,
     Win32::UI::WindowsAndMessaging::{
         EnumWindows, GetWindowRect, GetWindowTextLengthW, GetWindowTextW, IsWindowVisible,
         SetWindowPos, ShowWindow, SystemParametersInfoW, HWND_TOP, SPI_GETWORKAREA,
@@ -57,6 +58,12 @@ pub fn launch(cfg: &AppConfig) -> Result<(), LaunchError> {
 #[cfg(target_os = "windows")]
 fn launch_windows(cfg: &AppConfig) -> Result<(), LaunchError> {
     use std::thread;
+    use windows::core::w;
+
+    // 讓 spawn 出來的 wt.exe 繼承 WT 的 AUMID，才能合併到同一個工作列群組
+    unsafe {
+        let _ = SetCurrentProcessExplicitAppUserModelID(w!("Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"));
+    }
 
     let profiles = list_terminal_profiles();
     let mut known_windows = current_window_handles();
@@ -136,27 +143,38 @@ fn launch_panes_on_workarea(
         } else {
             pane.profile.trim()
         };
-        let profile_name = profiles
+        let profile_guid = profiles
             .iter()
             .find(|p| p.guid == profile_key || p.name == profile_key)
-            .map(|p| p.name.as_str());
+            .map(|p| p.guid.as_str());
 
-        if !pane.command.trim().is_empty() {
-            let command = shell_command(&pane.command);
-            if let Some(pn) = profile_name {
-                cmd.args(["-p", pn, "wsl.exe", "--", "bash", "-lic", &command]);
-            } else if profile_key.is_empty() {
+        if let Some(pg) = profile_guid {
+            // 用 GUID 指定 profile，避免同名 profile 抓錯
+            cmd.args(["-p", pg]);
+            if !pane.command.trim().is_empty() {
+                let command = shell_command(&pane.command);
+                cmd.args(["wsl.exe", "--", "bash", "-lic", &command]);
+            }
+        } else if profile_key.is_empty() {
+            // 沒有指定 profile：用系統預設
+            if !pane.command.trim().is_empty() {
+                let command = shell_command(&pane.command);
                 cmd.args(["wsl.exe", "--", "bash", "-lic", &command]);
             } else {
-                cmd.args(["wsl.exe", "-d", profile_key, "--", "bash", "-lic", &command]);
+                cmd.args(["wsl.exe"]);
             }
-        } else if let Some(pn) = profile_name {
-            cmd.args(["-p", pn]);
-        } else if profile_key.is_empty() {
-            cmd.args(["wsl.exe"]);
         } else {
-            cmd.args(["wsl.exe", "-d", profile_key]);
+            // profile_key 有值但找不到對應 profile（可能是 distro 名稱）
+            if !pane.command.trim().is_empty() {
+                let command = shell_command(&pane.command);
+                cmd.args(["wsl.exe", "-d", profile_key, "--", "bash", "-lic", &command]);
+            } else {
+                cmd.args(["wsl.exe", "-d", profile_key]);
+            }
         }
+
+        // debug：印出實際指令
+        eprintln!("[launch] wt.exe {:?}", cmd.get_args().collect::<Vec<_>>());
 
         cmd.spawn()
             .map_err(|e| LaunchError(format!("無法啟動 wt.exe: {e}")))?;

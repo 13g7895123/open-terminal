@@ -14,16 +14,32 @@
 
 ## 編譯 & 部署規則
 
-**每次修改完成後，必須執行以下指令編譯並部署：**
+**每次修改完成後，先編譯，複製前必須詢問目前環境（公司或家裡）：**
 
 ```bash
-cargo build --release --target x86_64-pc-windows-gnu && \
+cargo build --release --target x86_64-pc-windows-gnu
+```
+
+部署路徑依環境而定：
+
+| 環境 | 路徑 |
+|------|------|
+| 公司（C 槽） | `/mnt/c/Jarvis/20_tools/7_windows-exe/01_open-terminal/` |
+| 家裡（E 槽） | `/mnt/e/1_tools/05_windows-exe/02_open-terminal/` |
+
+複製指令範例（確認環境後再執行）：
+```bash
+# 公司
+cp target/x86_64-pc-windows-gnu/release/open-terminal.exe \
+   "/mnt/c/Jarvis/20_tools/7_windows-exe/01_open-terminal/"
+
+# 家裡
 cp target/x86_64-pc-windows-gnu/release/open-terminal.exe \
    "/mnt/e/1_tools/05_windows-exe/02_open-terminal/"
 ```
 
 - 永遠使用 `--target x86_64-pc-windows-gnu`
-- 部署路徑固定為 `/mnt/e/1_tools/05_windows-exe/02_open-terminal/`
+- **複製前必須先詢問使用者目前是在公司還是家裡**
 - 不需要 commit，DO NOT auto commit
 
 ## egui 0.28 已知 API 差異

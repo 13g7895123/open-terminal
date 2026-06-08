@@ -6,6 +6,7 @@ pub struct TerminalProfile {
     pub guid: String,
     pub name: String,
     pub source: Option<String>,
+    pub hidden: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -119,11 +120,11 @@ pub fn list_terminal_profiles() -> Vec<TerminalProfile> {
         .profiles
         .list
         .into_iter()
-        .filter(|p| !p.hidden)
         .map(|p| TerminalProfile {
             guid: p.guid,
             name: p.name,
             source: p.source,
+            hidden: p.hidden,
         })
         .collect();
 

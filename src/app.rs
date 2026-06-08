@@ -614,12 +614,20 @@ impl App {
             .filter(|candidate| candidate.name == profile.name)
             .count();
 
-        if duplicate_count > 1 {
+        let base = if duplicate_count > 1 {
             if let Some(source) = &profile.source {
-                return format!("{} ({})", profile.name, source);
+                format!("{} ({})", profile.name, source)
+            } else {
+                profile.name.clone()
             }
-        }
+        } else {
+            profile.name.clone()
+        };
 
-        profile.name.clone()
+        if profile.hidden {
+            format!("{} [隱藏]", base)
+        } else {
+            base
+        }
     }
 }
